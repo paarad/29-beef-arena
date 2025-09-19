@@ -4,94 +4,83 @@ import OpenAI from 'openai'
 import { supabase } from '@/lib/supabase'
 import { OPPONENTS, FIGHT_TEMPLATES } from '@/lib/constants'
 
-const replicate = new Replicate({
-  auth: process.env.REPLICATE_API_TOKEN!,
-})
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY!,
-})
-
-// Replicate model to use for image generation
+const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN! })
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! })
 const REPLICATE_MODEL = process.env.REPLICATE_MODEL || "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b"
 
 export async function POST(request: NextRequest) {
-  console.log('🥩 BEEF ARENA - Generation API called')
-  
+  console.log('🥩 BEEF ARENA - Celebrity vs Celebrity Generation API called')
+  let resultUrl: string = `https://picsum.photos/1024/1024?random=${Date.now()}`
+
   try {
     const body = await request.json()
     console.log('📝 Request body received:', {
-      hasSelfie: !!body.selfieUrl,
-      selfieUrlLength: body.selfieUrl?.length || 0,
-      opponentSlug: body.opponentSlug,
+      fighter1Slug: body.fighter1Slug,
+      fighter2Slug: body.fighter2Slug,
       styleSlug: body.styleSlug,
       watermarkEnabled: body.watermarkEnabled
     })
+    
+    const { fighter1Slug, fighter2Slug, styleSlug, watermarkEnabled } = body
 
-    const { selfieUrl, opponentSlug, styleSlug, watermarkEnabled } = body
-
-    // Validate inputs
-    if (!selfieUrl || !opponentSlug || !styleSlug) {
-      console.error('❌ Missing required fields:', { selfieUrl: !!selfieUrl, opponentSlug, styleSlug })
+    // Validate required fields
+    if (!fighter1Slug || !fighter2Slug || !styleSlug) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Missing required fields: fighter1Slug, fighter2Slug, styleSlug' },
         { status: 400 }
       )
     }
 
-    const opponent = OPPONENTS.find(o => o.slug === opponentSlug)
+    // Validate fighters are different
+    if (fighter1Slug === fighter2Slug) {
+      return NextResponse.json(
+        { error: 'Fighters must be different' },
+        { status: 400 }
+      )
+    }
+
+    // Find fighters
+    const fighter1 = OPPONENTS.find(o => o.slug === fighter1Slug)
+    const fighter2 = OPPONENTS.find(o => o.slug === fighter2Slug)
     const template = FIGHT_TEMPLATES.find(t => t.slug === styleSlug)
 
-    console.log('🎯 Found opponent:', opponent?.name)
-    console.log('🏟️ Found template:', template?.name)
-
-    if (!opponent || !template) {
-      console.error('❌ Invalid opponent or template:', { opponent: opponent?.name, template: template?.name })
-      return NextResponse.json(
-        { error: 'Invalid opponent or template' },
-        { status: 400 }
-      )
+    if (!fighter1) {
+      return NextResponse.json({ error: `Fighter 1 not found: ${fighter1Slug}` }, { status: 404 })
+    }
+    if (!fighter2) {
+      return NextResponse.json({ error: `Fighter 2 not found: ${fighter2Slug}` }, { status: 404 })
+    }
+    if (!template) {
+      return NextResponse.json({ error: `Template not found: ${styleSlug}` }, { status: 404 })
     }
 
-    // Step 1: Content moderation for the selfie
-    console.log('🛡️ Starting content moderation...')
-    try {
-      const moderationResponse = await openai.moderations.create({
-        input: selfieUrl,
-      })
-      
-      console.log('🛡️ Moderation result:', moderationResponse.results[0])
-      
-      if (moderationResponse.results[0].flagged) {
-        console.error('❌ Content flagged by moderation')
-        return NextResponse.json(
-          { error: 'Image content flagged by moderation' },
-          { status: 400 }
-        )
-      }
-    } catch (moderationError) {
-      console.error('⚠️ Moderation failed:', moderationError)
-      // Continue without moderation for now
-    }
+    console.log('🎯 Found fighters:', {
+      fighter1: fighter1.name,
+      fighter2: fighter2.name,
+      template: template.name
+    })
 
-    // Step 2: Generate fight poster using Replicate
-    console.log('🎨 Starting Replicate image generation...')
-    console.log('🤖 Using model:', REPLICATE_MODEL)
-    
+    // Generate fight prompt with enhanced celebrity descriptions
     const fightPrompt = `
       Create a dramatic fight poster scene in ${template.style_prompt} style.
       Two people facing off dramatically in a ${template.description}.
+      
+      Fighter 1: ${fighter1.description}
+      Fighter 2: ${fighter2.description}
+      
       Professional lighting, intense atmosphere, cinematic composition.
       Fight poster style with dramatic poses and lighting.
-      ${watermarkEnabled ? 'Include subtle parody watermark.' : ''}
+      Include both fighters prominently in the frame.
+      ${watermarkEnabled ? 'Include subtle "BEEF ARENA" watermark.' : ''}
     `
 
-    console.log('📝 Generated prompt:', fightPrompt)
-
-    let resultUrl: string
-
+    // Step 3: Generate image using AI
     try {
-      console.log('🚀 Calling Replicate API...')
+      console.log('🎨 Starting Replicate image generation...')
+      console.log('🤖 Using model:', REPLICATE_MODEL)
+      console.log('📝 Generated prompt:', fightPrompt)
+
+      console.log(`🚀 Calling Replicate API...`)
       
       const output = await replicate.run(REPLICATE_MODEL as any, {
         input: {
@@ -106,82 +95,115 @@ export async function POST(request: NextRequest) {
       })
 
       console.log('✅ Replicate output:', output)
-      
-      // Handle different output formats
+      console.log('🔍 Output type:', typeof output)
+      console.log('🔍 Is array:', Array.isArray(output))
       if (Array.isArray(output)) {
-        resultUrl = output[0]
-        console.log('📸 Using first image from array:', resultUrl)
+        console.log('🔍 First item type:', typeof output[0])
+        console.log('🔍 First item:', output[0])
+
+        const firstOutput = output[0]
+        if (typeof firstOutput === 'string') {
+          resultUrl = firstOutput
+          console.log('📸 Using first image URL from array:', resultUrl)
+        } else if (firstOutput && typeof firstOutput === 'object' && 'url' in firstOutput) {
+          console.log('🔍 URL property type:', typeof firstOutput.url)
+          if (typeof firstOutput.url === 'function') {
+            try {
+              const urlResult = await (firstOutput as any).url()
+              resultUrl = typeof urlResult === 'object' && urlResult.href ? urlResult.href : String(urlResult)
+              console.log('📸 Got URL from function call:', resultUrl)
+            } catch (error) {
+              console.error('❌ Error calling URL function:', error)
+              console.log('🔄 Using default placeholder due to URL function error')
+            }
+          } else if (typeof firstOutput.url === 'string') {
+            resultUrl = firstOutput.url
+            console.log('📸 Got URL from string property:', resultUrl)
+          } else {
+            console.error('❌ URL property is neither function nor string:', typeof firstOutput.url)
+            console.log('🔄 Using default placeholder due to unknown URL type')
+          }
+        } else {
+          console.error('❌ First array item is not a string or URL object:', typeof firstOutput)
+          console.error('❌ First item details:', firstOutput)
+          console.log('🔄 Using default placeholder due to Replicate format issue')
+        }
       } else if (typeof output === 'string') {
         resultUrl = output
         console.log('📸 Using direct string output:', resultUrl)
+      } else if (output && typeof output === 'object' && 'url' in output) {
+        resultUrl = (output as any).url
+        console.log('📸 Using URL property from object:', resultUrl)
       } else {
-        console.error('❌ Unexpected Replicate output format:', typeof output)
-        throw new Error('Unexpected output format from Replicate')
+        console.error('❌ Unexpected Replicate output format:', typeof output, output)
+        console.log('🔄 Using default placeholder due to unknown format')
       }
 
     } catch (replicateError) {
       console.error('❌ Replicate generation failed:', replicateError)
-      
-      // Fallback to placeholder for demo
-      resultUrl = `https://picsum.photos/1024/1024?random=${Date.now()}`
       console.log('🔄 Using fallback placeholder:', resultUrl)
     }
 
-    // Step 3: Generate meme captions using OpenAI
-    console.log('📝 Starting caption generation...')
+    // Step 4: Generate captions using OpenAI
+    let captions: string[] = []
     
-    const captionPrompt = `
-      Write 4 funny, meme-ready captions for a fake parody fight between a user and ${opponent.name}.
-      Fight style: ${template.description}.
-      Keep it PG-13, witty, and 10-14 words each.
-      Include fight/wrestling puns and references to ${opponent.name}'s known traits.
-      Format as a JSON array of strings.
-    `
-
-    console.log('📝 Caption prompt:', captionPrompt)
-
-    let captions = [
-      `When ${opponent.nickname} meets their match 🔥`,
-      'This beef is well done 🥩',
-      'Talk is cheap, fists are free',
-      'The main event nobody asked for'
-    ]
-
     try {
+      console.log('📝 Starting caption generation...')
+      const captionPrompt = `
+        Write 4 funny, meme-ready captions for a fake parody fight between ${fighter1.name} and ${fighter2.name}.
+        Fight style: ${template.description}.
+        Keep it PG-13, witty, and 10-14 words each.
+        Include fight/wrestling puns and references to both celebrities' known traits.
+        Format as a JSON array of strings.
+      `
+      console.log('📝 Caption prompt:', captionPrompt)
+      
       console.log('🤖 Calling OpenAI for captions...')
       
       const captionResponse = await openai.chat.completions.create({
         model: 'gpt-4',
         messages: [
-          {
-            role: 'user',
-            content: captionPrompt,
-          },
+          { role: 'user', content: captionPrompt }
         ],
-        max_tokens: 200,
-        temperature: 0.8,
+        temperature: 0.9,
+        max_tokens: 200
       })
 
-      console.log('✅ OpenAI response:', captionResponse.choices[0].message.content)
-
-      const generatedCaptions = JSON.parse(captionResponse.choices[0].message.content || '[]')
-      if (Array.isArray(generatedCaptions) && generatedCaptions.length > 0) {
-        captions = generatedCaptions
+      const captionText = captionResponse.choices[0]?.message?.content || '[]'
+      console.log('✅ OpenAI response:', captionText)
+      
+      try {
+        captions = JSON.parse(captionText)
         console.log('📝 Using generated captions:', captions)
+      } catch (parseError) {
+        console.error('❌ Failed to parse captions JSON:', parseError)
+        captions = [
+          `${fighter1.name} vs ${fighter2.name}: The ultimate showdown!`,
+          `When ${fighter1.nickname} meets ${fighter2.nickname} in the ring!`,
+          `This fight is more heated than their Twitter beef!`,
+          `The battle everyone didn't know they needed!`
+        ]
+        console.log('🔄 Using fallback captions')
       }
     } catch (captionError) {
       console.error('❌ Caption generation failed:', captionError)
+      captions = [
+        `${fighter1.name} vs ${fighter2.name}: The ultimate showdown!`,
+        `When ${fighter1.nickname} meets ${fighter2.nickname} in the ring!`,
+        `This fight is more heated than their Twitter beef!`,
+        `The battle everyone didn't know they needed!`
+      ]
       console.log('🔄 Using fallback captions')
     }
 
-    // Step 4: Store generation in database
+    // Step 5: Store generation in database (optional - don't fail if this fails)
     console.log('💾 Storing in database...')
     try {
       const { data, error } = await supabase
-        .from('generations')
+        .from('beefarena_generations')
         .insert({
-          selfie_url: selfieUrl,
-          opponent_slug: opponentSlug,
+          fighter1_slug: fighter1Slug,
+          fighter2_slug: fighter2Slug,
           style: styleSlug,
           result_url: resultUrl,
           captions: captions,
@@ -191,25 +213,27 @@ export async function POST(request: NextRequest) {
         .single()
 
       if (error) {
-        console.error('❌ Database error:', error)
+        console.error('❌ Database error (continuing anyway):', error)
       } else {
         console.log('✅ Stored in database:', data?.id)
       }
     } catch (dbError) {
-      console.error('❌ Database operation failed:', dbError)
+      console.error('❌ Database operation failed (continuing anyway):', dbError)
+      // Continue execution even if database fails
     }
 
     console.log('🎉 Generation completed successfully!')
-
     return NextResponse.json({
       success: true,
       resultUrl,
       captions,
-      opponent: opponent.name,
+      fighter1: fighter1.name,
+      fighter2: fighter2.name,
       style: template.name,
-      debug: {
-        model: REPLICATE_MODEL,
-        prompt: fightPrompt
+      debug: { 
+        model: REPLICATE_MODEL, 
+        prompt: fightPrompt,
+        celebrityFight: true
       }
     })
 

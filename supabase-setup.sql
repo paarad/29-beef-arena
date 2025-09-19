@@ -125,7 +125,7 @@ CREATE POLICY "Users can view own generations" ON generations
   FOR SELECT USING (auth.uid() = user_id OR user_id IS NULL);
 
 CREATE POLICY "Anyone can create generations" ON generations
-  FOR INSERT WITH CHECK (true);
+  FOR INSERT WITH CHECK (user_id IS NULL OR auth.uid() = user_id);
 
 CREATE POLICY "Users can update own generations" ON generations
   FOR UPDATE USING (auth.uid() = user_id OR user_id IS NULL);

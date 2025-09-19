@@ -13,14 +13,14 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- Users table
-CREATE TABLE IF NOT EXISTS users (
+CREATE TABLE IF NOT EXISTS beefarena_users (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   email TEXT UNIQUE
 );
 
 -- Opponents table
-CREATE TABLE IF NOT EXISTS opponents (
+CREATE TABLE IF NOT EXISTS beefarena_opponents (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   name TEXT NOT NULL,
   slug TEXT UNIQUE NOT NULL,
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS opponents (
 );
 
 -- Templates table  
-CREATE TABLE IF NOT EXISTS templates (
+CREATE TABLE IF NOT EXISTS beefarena_templates (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   name TEXT NOT NULL,
   slug TEXT UNIQUE NOT NULL,
@@ -41,9 +41,9 @@ CREATE TABLE IF NOT EXISTS templates (
 );
 
 -- Generations table
-CREATE TABLE IF NOT EXISTS generations (
+CREATE TABLE IF NOT EXISTS beefarena_generations (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  user_id UUID REFERENCES beefarena_users(id) ON DELETE SET NULL,
   selfie_url TEXT NOT NULL,
   opponent_slug TEXT NOT NULL,
   style TEXT NOT NULL,
@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS generations (
 );
 
 -- Insert default opponents
-INSERT INTO opponents (name, slug, nickname, base_photo_url, allowed) VALUES
+INSERT INTO beefarena_opponents (name, slug, nickname, base_photo_url, allowed) VALUES
   ('Elon Musk', 'elon-musk', 'The Algorithm Assassin', '/opponents/elon-musk.jpg', true),
   ('Taylor Swift', 'taylor-swift', 'The Reputation Wrecker', '/opponents/taylor-swift.jpg', true),
   ('MrBeast', 'mrbeast', 'The Content King', '/opponents/mrbeast.jpg', true),
@@ -64,7 +64,7 @@ INSERT INTO opponents (name, slug, nickname, base_photo_url, allowed) VALUES
 ON CONFLICT (slug) DO NOTHING;
 
 -- Insert default templates
-INSERT INTO templates (name, slug, style_prompt, description) VALUES
+INSERT INTO beefarena_templates (name, slug, style_prompt, description) VALUES
   (
     'Staredown', 
     'staredown', 
@@ -98,26 +98,26 @@ INSERT INTO templates (name, slug, style_prompt, description) VALUES
 ON CONFLICT (slug) DO NOTHING;
 
 -- Create indexes for better performance
-CREATE INDEX IF NOT EXISTS idx_generations_created_at ON generations(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_generations_status ON generations(status);
-CREATE INDEX IF NOT EXISTS idx_generations_opponent_slug ON generations(opponent_slug);
-CREATE INDEX IF NOT EXISTS idx_opponents_slug ON opponents(slug);
-CREATE INDEX IF NOT EXISTS idx_templates_slug ON templates(slug);
+CREATE INDEX IF NOT EXISTS idx_beefarena_generations_created_at ON beefarena_generations(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_beefarena_generations_status ON beefarena_generations(status);
+CREATE INDEX IF NOT EXISTS idx_beefarena_generations_opponent_slug ON beefarena_generations(opponent_slug);
+CREATE INDEX IF NOT EXISTS idx_beefarena_opponents_slug ON beefarena_opponents(slug);
+CREATE INDEX IF NOT EXISTS idx_beefarena_templates_slug ON beefarena_templates(slug);
 
 -- Enable Row Level Security (RLS)
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE opponents ENABLE ROW LEVEL SECURITY;
-ALTER TABLE templates ENABLE ROW LEVEL SECURITY;
-ALTER TABLE generations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE beefarena_users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE beefarena_opponents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE beefarena_templates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE beefarena_generations ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies
-CREATE POLICY "Users can view own profile" ON users FOR SELECT USING (auth.uid() = id);
-CREATE POLICY "Users can update own profile" ON users FOR UPDATE USING (auth.uid() = id);
-CREATE POLICY "Anyone can view opponents" ON opponents FOR SELECT USING (allowed = true);
-CREATE POLICY "Anyone can view templates" ON templates FOR SELECT USING (true);
-CREATE POLICY "Users can view own generations" ON generations FOR SELECT USING (auth.uid() = user_id OR user_id IS NULL);
-CREATE POLICY "Anyone can create generations" ON generations FOR INSERT WITH CHECK (true);
-CREATE POLICY "Users can update own generations" ON generations FOR UPDATE USING (auth.uid() = user_id OR user_id IS NULL);
+CREATE POLICY "Users can view own profile" ON beefarena_users FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Users can update own profile" ON beefarena_users FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Anyone can view opponents" ON beefarena_opponents FOR SELECT USING (allowed = true);
+CREATE POLICY "Anyone can view templates" ON beefarena_templates FOR SELECT USING (true);
+CREATE POLICY "Users can view own generations" ON beefarena_generations FOR SELECT USING (auth.uid() = user_id OR user_id IS NULL);
+CREATE POLICY "Anyone can create generations" ON beefarena_generations FOR INSERT WITH CHECK (true);
+CREATE POLICY "Users can update own generations" ON beefarena_generations FOR UPDATE USING (auth.uid() = user_id OR user_id IS NULL);
 
 -- Grant necessary permissions
 GRANT USAGE ON SCHEMA public TO anon, authenticated;

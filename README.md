@@ -98,45 +98,45 @@ It feels more like a fighter intro screen from UFC or Mortal Kombat than a regul
    Create tables in your Supabase instance:
    ```sql
    -- Users table
-   CREATE TABLE users (
-     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-     created_at TIMESTAMP DEFAULT NOW(),
+   CREATE TABLE beefarena_users (
+     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
      email TEXT
    );
    
    -- Opponents table
-   CREATE TABLE opponents (
-     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+   CREATE TABLE beefarena_opponents (
+     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
      name TEXT NOT NULL,
      slug TEXT UNIQUE NOT NULL,
      nickname TEXT NOT NULL,
      base_photo_url TEXT NOT NULL,
      allowed BOOLEAN DEFAULT true,
-     created_at TIMESTAMP DEFAULT NOW()
+     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
    );
    
    -- Templates table
-   CREATE TABLE templates (
-     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+   CREATE TABLE beefarena_templates (
+     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
      name TEXT NOT NULL,
      slug TEXT UNIQUE NOT NULL,
      style_prompt TEXT NOT NULL,
      description TEXT NOT NULL,
-     created_at TIMESTAMP DEFAULT NOW()
+     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
    );
    
    -- Generations table
-   CREATE TABLE generations (
-     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-     user_id UUID REFERENCES users(id),
+   CREATE TABLE beefarena_generations (
+     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+     user_id UUID REFERENCES beefarena_users(id) ON DELETE SET NULL,
      selfie_url TEXT NOT NULL,
      opponent_slug TEXT NOT NULL,
      style TEXT NOT NULL,
      result_url TEXT,
      captions TEXT[],
-     status TEXT DEFAULT 'pending',
+     status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'generating', 'completed', 'failed')),
      safety_flags JSONB,
-     created_at TIMESTAMP DEFAULT NOW()
+     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
    );
    ```
 

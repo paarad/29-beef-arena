@@ -2,22 +2,16 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Upload, Zap, Download, RotateCcw } from 'lucide-react'
+import { Zap, Download, RotateCcw, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Progress } from '@/components/ui/progress'
 import { OPPONENTS, FIGHT_TEMPLATES } from '@/lib/constants'
-import { FileUpload } from '@/components/file-upload'
-import { FightPreview } from '@/components/fight-preview'
-import { OpponentSelector } from '@/components/opponent-selector'
-import { StyleSelector } from '@/components/style-selector'
 
 interface GenerationState {
-  selfieFile: File | null
-  selfieUrl: string | null
-  selectedOpponent: string
+  selectedFighter1: string
+  selectedFighter2: string
   selectedStyle: string
   watermarkEnabled: boolean
   isGenerating: boolean
@@ -26,11 +20,142 @@ interface GenerationState {
   captions: string[]
 }
 
+// Inline OpponentSelector component
+function OpponentSelector({ selectedOpponent, onSelect }: { selectedOpponent: string, onSelect: (opponent: string) => void }) {
+  const currentOpponent = OPPONENTS.find(o => o.slug === selectedOpponent)
+  
+  return (
+    <div className="space-y-4">
+      {/* Show selected opponent prominently */}
+      {currentOpponent ? (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center mb-4"
+        >
+          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center text-white font-bold text-2xl mx-auto mb-3">
+            {currentOpponent.name.split(' ').map(n => n[0]).join('')}
+          </div>
+          <div className="text-white font-bold text-lg">{currentOpponent.name}</div>
+          <div className="text-red-400 text-sm">{currentOpponent.nickname}</div>
+        </motion.div>
+      ) : (
+        <div className="text-center mb-4">
+          <div className="w-24 h-24 rounded-full border-2 border-dashed border-gray-500 flex items-center justify-center text-gray-500 mx-auto mb-3">
+            <span className="text-2xl">?</span>
+          </div>
+          <div className="text-gray-400 text-sm">Select a fighter</div>
+        </div>
+      )}
+
+      {/* Fighter selection list */}
+      <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto">
+        {OPPONENTS.map((opponent, index) => (
+          <motion.div key={opponent.slug} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.1 }}>
+            <Card
+              className={`p-2 cursor-pointer transition-all ${
+                selectedOpponent === opponent.slug
+                  ? 'bg-red-600 border-red-500 text-white'
+                  : 'bg-gray-800/50 border-gray-700 text-gray-300 hover:bg-gray-700/50'
+              }`}
+              onClick={() => onSelect(opponent.slug)}
+            >
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center text-white font-bold text-xs">
+                  {opponent.name.split(' ').map(n => n[0]).join('')}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-xs truncate">{opponent.name}</div>
+                </div>
+              </div>
+            </Card>
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// Inline StyleSelector component  
+function StyleSelector({ selectedStyle, onSelect }: { selectedStyle: string, onSelect: (style: string) => void }) {
+  return (
+    <Card className="bg-gray-900/50 border-gray-700 p-6">
+      <h3 className="text-white font-bold text-xl mb-6 text-center">Choose Your Arena</h3>
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        {FIGHT_TEMPLATES.map((template, index) => (
+          <motion.div key={template.slug} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1 }}>
+            <Card
+              className={`p-4 cursor-pointer transition-all aspect-square flex flex-col items-center justify-center text-center ${
+                selectedStyle === template.slug
+                  ? 'bg-yellow-600 border-yellow-500 text-white scale-105'
+                  : 'bg-gray-800/50 border-gray-600 text-gray-300 hover:bg-gray-700/50 hover:scale-102'
+              }`}
+              onClick={() => onSelect(template.slug)}
+            >
+              <div className="text-3xl mb-2">
+                {template.slug === 'staredown' && '🥊'}
+                {template.slug === 'weighin' && '💪'}
+                {template.slug === 'press' && '⚖️'}
+                {template.slug === 'anime' && '⚡'}
+                {template.slug === 'street' && '📸'}
+              </div>
+              <div className="font-bold text-sm mb-1">{template.name}</div>
+              <div className="text-xs opacity-75">{template.description}</div>
+            </Card>
+          </motion.div>
+        ))}
+      </div>
+    </Card>
+  )
+}
+
+// Inline FightPreview component
+function FightPreview({ resultUrl, captions, onDownload, onRemix }: { 
+  resultUrl: string, 
+  captions: string[], 
+  onDownload: () => void, 
+  onRemix: () => void 
+}) {
+  return (
+    <Card className="bg-gray-900/50 border-gray-700 p-6">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+        <div className="text-center">
+          <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: 'spring', damping: 15 }} className="relative inline-block">
+            <img src={resultUrl} alt="Fight result" className="max-w-full h-auto rounded-lg shadow-2xl border-4 border-yellow-500" />
+            <div className="absolute -top-4 -right-4 bg-yellow-500 text-black font-bold text-lg px-3 py-1 rounded-full">FIGHT!</div>
+          </motion.div>
+        </div>
+        <div className="space-y-4">
+          <h4 className="text-white font-bold text-lg text-center">Meme-Ready Captions</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {captions.map((caption, index) => (
+              <motion.div key={index} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: index * 0.1 }}>
+                <Card className="bg-gray-800/50 border-gray-600 p-3 hover:bg-gray-700/50 transition-colors cursor-pointer group">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-300 text-sm flex-1">{caption}</span>
+                  </div>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-4 justify-center">
+          <Button onClick={onDownload} className="bg-green-600 hover:bg-green-700 text-white">
+            <Download className="w-4 h-4 mr-2" /> Download Poster
+          </Button>
+          <Button onClick={onRemix} variant="outline" className="border-purple-500 text-purple-400 hover:bg-purple-500 hover:text-white">
+            <RotateCcw className="w-4 h-4 mr-2" /> Remix
+          </Button>
+        </div>
+      </motion.div>
+    </Card>
+  )
+}
+
 export function ArenaGenerator() {
   const [state, setState] = useState<GenerationState>({
-    selfieFile: null,
-    selfieUrl: null,
-    selectedOpponent: '',
+    selectedFighter1: '',
+    selectedFighter2: '',
     selectedStyle: '',
     watermarkEnabled: true,
     isGenerating: false,
@@ -39,44 +164,25 @@ export function ArenaGenerator() {
     captions: []
   })
 
-  const handleFileUpload = (file: File) => {
-    const url = URL.createObjectURL(file)
-    setState(prev => ({
-      ...prev,
-      selfieFile: file,
-      selfieUrl: url
-    }))
-  }
-
   const handleGenerate = async () => {
-    if (!state.selfieFile || !state.selectedOpponent || !state.selectedStyle) {
+    if (!state.selectedFighter1 || !state.selectedFighter2 || !state.selectedStyle) {
       console.log('❌ Cannot generate: missing requirements', {
-        hasSelfie: !!state.selfieFile,
-        hasOpponent: !!state.selectedOpponent,
+        hasFighter1: !!state.selectedFighter1,
+        hasFighter2: !!state.selectedFighter2,
         hasStyle: !!state.selectedStyle
       })
       return
     }
 
-    console.log('🚀 Starting generation process...')
+    if (state.selectedFighter1 === state.selectedFighter2) {
+      console.log('❌ Cannot generate: same fighter selected for both')
+      return
+    }
+
+    console.log('🚀 Starting celebrity vs celebrity generation...')
     setState(prev => ({ ...prev, isGenerating: true, progress: 0 }))
 
     try {
-      // Convert file to data URL for API
-      console.log('📸 Converting selfie to data URL...')
-      const fileDataUrl = await new Promise<string>((resolve) => {
-        const reader = new FileReader()
-        reader.onload = (e) => resolve(e.target?.result as string)
-        reader.readAsDataURL(state.selfieFile!)
-      })
-
-      console.log('📊 File converted:', {
-        originalSize: state.selfieFile.size,
-        dataUrlLength: fileDataUrl.length,
-        fileType: state.selfieFile.type
-      })
-
-      // Simulate progress
       const progressInterval = setInterval(() => {
         setState(prev => ({
           ...prev,
@@ -85,20 +191,18 @@ export function ArenaGenerator() {
       }, 800)
 
       console.log('📤 Sending request to API...', {
-        opponentSlug: state.selectedOpponent,
+        fighter1: state.selectedFighter1,
+        fighter2: state.selectedFighter2,
         styleSlug: state.selectedStyle,
         watermarkEnabled: state.watermarkEnabled
       })
 
-      // Call the generation API
       const response = await fetch('/api/generate', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          selfieUrl: fileDataUrl,
-          opponentSlug: state.selectedOpponent,
+          fighter1Slug: state.selectedFighter1,
+          fighter2Slug: state.selectedFighter2,
           styleSlug: state.selectedStyle,
           watermarkEnabled: state.watermarkEnabled,
         }),
@@ -122,11 +226,12 @@ export function ArenaGenerator() {
       console.log('✅ Generation successful:', {
         hasResultUrl: !!result.resultUrl,
         captionsCount: result.captions?.length || 0,
-        opponent: result.opponent,
+        fighter1: result.fighter1,
+        fighter2: result.fighter2,
         style: result.style,
         debug: result.debug
       })
-      
+
       setState(prev => ({
         ...prev,
         isGenerating: false,
@@ -136,11 +241,10 @@ export function ArenaGenerator() {
       }))
     } catch (error) {
       console.error('💥 Generation failed:', error)
-      setState(prev => ({ 
-        ...prev, 
-        isGenerating: false, 
+      setState(prev => ({
+        ...prev,
+        isGenerating: false,
         progress: 0,
-        // Show error state
         resultUrl: null,
         captions: ['Error: ' + (error instanceof Error ? error.message : 'Generation failed')]
       }))
@@ -156,101 +260,93 @@ export function ArenaGenerator() {
     }))
   }
 
-  const canGenerate = state.selfieFile && state.selectedOpponent && state.selectedStyle && !state.isGenerating
+  const canGenerate = state.selectedFighter1 && 
+                     state.selectedFighter2 && 
+                     state.selectedStyle && 
+                     state.selectedFighter1 !== state.selectedFighter2 && 
+                     !state.isGenerating
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
-      {/* VS Layout */}
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.9 }}
+    <div className="space-y-8">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="grid md:grid-cols-3 gap-8 items-center"
+        transition={{ duration: 0.5 }}
+        className="grid grid-cols-1 lg:grid-cols-3 gap-6"
       >
-        {/* Blue Corner - User */}
-        <Card className="bg-blue-900/20 border-blue-500/30 p-6">
+        {/* Fighter 1 Selection */}
+        <Card className="bg-blue-900/30 border-blue-500 p-6">
           <div className="text-center">
             <div className="text-blue-400 font-bold text-sm mb-2">BLUE CORNER</div>
-            <div className="text-white text-xl font-bold mb-4">YOU</div>
-            <FileUpload onFileSelect={handleFileUpload} currentFile={state.selfieUrl} />
+            <div className="text-white text-xl font-bold mb-4">FIGHTER 1</div>
+            <OpponentSelector 
+              selectedOpponent={state.selectedFighter1}
+              onSelect={(opponent: string) => setState(prev => ({ ...prev, selectedFighter1: opponent }))}
+            />
           </div>
         </Card>
 
-        {/* VS Center */}
-        <div className="text-center">
+        {/* VS Divider */}
+        <div className="flex items-center justify-center">
           <motion.div
-            animate={{ 
-              scale: state.isGenerating ? [1, 1.1, 1] : 1,
-              rotate: state.isGenerating ? [0, 5, -5, 0] : 0
-            }}
-            transition={{ 
-              duration: 0.5, 
-              repeat: state.isGenerating ? Infinity : 0 
-            }}
-            className="text-6xl md:text-8xl font-black text-white mb-4"
-            style={{
-              background: 'linear-gradient(45deg, #ff6b6b, #ffd93d)',
-              backgroundClip: 'text',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              filter: 'drop-shadow(0 0 20px rgba(255, 107, 107, 0.5))'
-            }}
+            animate={{ rotate: 360 }}
+            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+            className="w-20 h-20 rounded-full border-4 border-yellow-500 flex items-center justify-center bg-yellow-500/20"
           >
-            VS
+            <span className="text-yellow-400 font-black text-2xl">VS</span>
           </motion.div>
         </div>
 
-        {/* Red Corner - Opponent */}
-        <Card className="bg-red-900/20 border-red-500/30 p-6">
+        {/* Fighter 2 Selection */}
+        <Card className="bg-red-900/30 border-red-500 p-6">
           <div className="text-center">
             <div className="text-red-400 font-bold text-sm mb-2">RED CORNER</div>
-            <div className="text-white text-xl font-bold mb-4">OPPONENT</div>
+            <div className="text-white text-xl font-bold mb-4">FIGHTER 2</div>
             <OpponentSelector 
-              selectedOpponent={state.selectedOpponent}
-              onSelect={(opponent) => setState(prev => ({ ...prev, selectedOpponent: opponent }))}
+              selectedOpponent={state.selectedFighter2}
+              onSelect={(opponent: string) => setState(prev => ({ ...prev, selectedFighter2: opponent }))}
             />
           </div>
         </Card>
       </motion.div>
 
-      {/* Style Selector */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-      >
-        <StyleSelector
-          selectedStyle={state.selectedStyle}
-          onSelect={(style) => setState(prev => ({ ...prev, selectedStyle: style }))}
-        />
-      </motion.div>
+      {/* Fight Style Selection */}
+      <StyleSelector 
+        selectedStyle={state.selectedStyle}
+        onSelect={(style: string) => setState(prev => ({ ...prev, selectedStyle: style }))}
+      />
 
-      {/* Controls */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="space-y-4"
-      >
-        {/* Watermark Toggle */}
-        <div className="flex items-center justify-center gap-4">
-          <label className="text-white font-medium">Parody Watermark</label>
-          <Switch
-            checked={state.watermarkEnabled}
-            onCheckedChange={(checked) => setState(prev => ({ ...prev, watermarkEnabled: checked }))}
-          />
+      {/* Settings */}
+      <Card className="bg-gray-900/50 border-gray-700 p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <Switch 
+              checked={state.watermarkEnabled}
+              onCheckedChange={(checked) => setState(prev => ({ ...prev, watermarkEnabled: checked }))}
+            />
+            <label className="text-gray-300 text-sm">Include "BEEF ARENA" watermark</label>
+          </div>
         </div>
+      </Card>
 
-        {/* Generate Button */}
-        <div className="text-center">
+      {/* Generate Button */}
+      <div className="text-center">
+        <motion.div
+          whileHover={{ scale: canGenerate ? 1.05 : 1 }}
+          whileTap={{ scale: canGenerate ? 0.95 : 1 }}
+        >
           <Button
             onClick={handleGenerate}
             disabled={!canGenerate}
-            size="lg"
-            className="bg-gradient-to-r from-red-600 to-blue-600 hover:from-red-700 hover:to-blue-700 text-white font-bold px-12 py-6 text-xl rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+            className={`text-2xl font-black py-8 px-12 rounded-xl transition-all duration-300 ${
+              canGenerate
+                ? 'bg-gradient-to-r from-red-600 via-yellow-500 to-red-600 hover:from-red-700 hover:via-yellow-400 hover:to-red-700 text-white shadow-lg hover:shadow-2xl'
+                : 'bg-gray-700 text-gray-400 cursor-not-allowed'
+            }`}
           >
             {state.isGenerating ? (
               <>
-                <Zap className="w-6 h-6 mr-2 animate-spin" />
+                <Loader2 className="w-6 h-6 mr-2 animate-spin" />
                 Generating...
               </>
             ) : (
@@ -260,38 +356,43 @@ export function ArenaGenerator() {
               </>
             )}
           </Button>
-        </div>
-
-        {/* Progress Bar */}
-        {state.isGenerating && (
-          <div className="max-w-md mx-auto">
-            <Progress value={state.progress} className="h-3" />
-            <p className="text-center text-gray-400 mt-2">
-              {state.progress < 30 ? 'Analyzing faces...' : 
-               state.progress < 60 ? 'Preparing the arena...' :
-               state.progress < 90 ? 'Settling the beef...' : 'Almost ready...'}
-            </p>
-          </div>
-        )}
-      </motion.div>
-
-      {/* Fight Preview */}
-      {state.resultUrl && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ type: 'spring', damping: 20 }}
-        >
-          <FightPreview
-            resultUrl={state.resultUrl}
-            captions={state.captions}
-            onDownload={() => {
-              // TODO: Implement download
-              console.log('Download fight poster')
-            }}
-            onRemix={handleRemix}
-          />
         </motion.div>
+        
+        {state.isGenerating && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-6 space-y-2"
+          >
+            <Progress value={state.progress} className="w-full max-w-md mx-auto" />
+            <p className="text-gray-400 text-sm">Creating epic showdown...</p>
+          </motion.div>
+        )}
+        
+        {!canGenerate && (
+          <p className="text-gray-500 text-sm mt-4">
+            {!state.selectedFighter1 || !state.selectedFighter2 
+              ? "Select both fighters to continue"
+              : state.selectedFighter1 === state.selectedFighter2
+              ? "Choose different fighters"
+              : "Choose a fight style"}
+          </p>
+        )}
+      </div>
+
+      {/* Results */}
+      {state.resultUrl && (
+        <FightPreview
+          resultUrl={state.resultUrl}
+          captions={state.captions}
+          onDownload={() => {
+            const link = document.createElement('a')
+            link.href = state.resultUrl!
+            link.download = 'beef-arena-fight.png'
+            link.click()
+          }}
+          onRemix={handleRemix}
+        />
       )}
     </div>
   )

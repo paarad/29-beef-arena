@@ -8,7 +8,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 export type Database = {
   public: {
     Tables: {
-      users: {
+      beefarena_users: {
         Row: {
           id: string
           created_at: string
@@ -25,7 +25,7 @@ export type Database = {
           email?: string | null
         }
       }
-      generations: {
+      beefarena_generations: {
         Row: {
           id: string
           user_id: string | null
@@ -63,7 +63,7 @@ export type Database = {
           created_at?: string
         }
       }
-      opponents: {
+      beefarena_opponents: {
         Row: {
           id: string
           name: string
@@ -71,6 +71,7 @@ export type Database = {
           nickname: string
           base_photo_url: string
           allowed: boolean
+          description: string
           created_at: string
         }
         Insert: {
@@ -80,6 +81,7 @@ export type Database = {
           nickname: string
           base_photo_url: string
           allowed?: boolean
+          description: string
           created_at?: string
         }
         Update: {
@@ -89,10 +91,11 @@ export type Database = {
           nickname?: string
           base_photo_url?: string
           allowed?: boolean
+          description?: string
           created_at?: string
         }
       }
-      templates: {
+      beefarena_templates: {
         Row: {
           id: string
           name: string
