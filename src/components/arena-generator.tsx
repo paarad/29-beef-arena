@@ -50,17 +50,30 @@ export function ArenaGenerator() {
 
   const handleGenerate = async () => {
     if (!state.selfieFile || !state.selectedOpponent || !state.selectedStyle) {
+      console.log('❌ Cannot generate: missing requirements', {
+        hasSelfie: !!state.selfieFile,
+        hasOpponent: !!state.selectedOpponent,
+        hasStyle: !!state.selectedStyle
+      })
       return
     }
 
+    console.log('🚀 Starting generation process...')
     setState(prev => ({ ...prev, isGenerating: true, progress: 0 }))
 
     try {
       // Convert file to data URL for API
+      console.log('📸 Converting selfie to data URL...')
       const fileDataUrl = await new Promise<string>((resolve) => {
         const reader = new FileReader()
         reader.onload = (e) => resolve(e.target?.result as string)
         reader.readAsDataURL(state.selfieFile!)
+      })
+
+      console.log('📊 File converted:', {
+        originalSize: state.selfieFile.size,
+        dataUrlLength: fileDataUrl.length,
+        fileType: state.selfieFile.type
       })
 
       // Simulate progress
@@ -70,6 +83,12 @@ export function ArenaGenerator() {
           progress: Math.min(prev.progress + Math.random() * 15, 85)
         }))
       }, 800)
+
+      console.log('📤 Sending request to API...', {
+        opponentSlug: state.selectedOpponent,
+        styleSlug: state.selectedStyle,
+        watermarkEnabled: state.watermarkEnabled
+      })
 
       // Call the generation API
       const response = await fetch('/api/generate', {
@@ -87,12 +106,26 @@ export function ArenaGenerator() {
 
       clearInterval(progressInterval)
 
+      console.log('📥 API response received:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok
+      })
+
       if (!response.ok) {
         const errorData = await response.json()
+        console.error('❌ API error response:', errorData)
         throw new Error(errorData.error || 'Generation failed')
       }
 
       const result = await response.json()
+      console.log('✅ Generation successful:', {
+        hasResultUrl: !!result.resultUrl,
+        captionsCount: result.captions?.length || 0,
+        opponent: result.opponent,
+        style: result.style,
+        debug: result.debug
+      })
       
       setState(prev => ({
         ...prev,
@@ -102,7 +135,7 @@ export function ArenaGenerator() {
         captions: result.captions || []
       }))
     } catch (error) {
-      console.error('Generation failed:', error)
+      console.error('💥 Generation failed:', error)
       setState(prev => ({ 
         ...prev, 
         isGenerating: false, 
