@@ -35,7 +35,7 @@ export type Database = {
           result_url: string | null
           captions: string[]
           status: 'pending' | 'generating' | 'completed' | 'failed'
-          safety_flags: Record<string, any> | null
+          safety_flags: Record<string, unknown> | null
           created_at: string
         }
         Insert: {
@@ -47,7 +47,7 @@ export type Database = {
           result_url?: string | null
           captions?: string[]
           status?: 'pending' | 'generating' | 'completed' | 'failed'
-          safety_flags?: Record<string, any> | null
+          safety_flags?: Record<string, unknown> | null
           created_at?: string
         }
         Update: {
@@ -59,7 +59,7 @@ export type Database = {
           result_url?: string | null
           captions?: string[]
           status?: 'pending' | 'generating' | 'completed' | 'failed'
-          safety_flags?: Record<string, any> | null
+          safety_flags?: Record<string, unknown> | null
           created_at?: string
         }
       }

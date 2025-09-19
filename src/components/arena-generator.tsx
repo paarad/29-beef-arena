@@ -324,7 +324,7 @@ export function ArenaGenerator() {
               checked={state.watermarkEnabled}
               onCheckedChange={(checked) => setState(prev => ({ ...prev, watermarkEnabled: checked }))}
             />
-            <label className="text-gray-300 text-sm">Include "BEEF ARENA" watermark</label>
+            <label className="text-gray-300 text-sm">Include &quot;BEEF ARENA&quot; watermark</label>
           </div>
         </div>
       </Card>

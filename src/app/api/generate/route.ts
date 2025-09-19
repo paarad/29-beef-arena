@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
 
       console.log(`🚀 Calling Replicate API...`)
       
-      const output = await replicate.run(REPLICATE_MODEL as any, {
+      const output = await replicate.run(REPLICATE_MODEL as `${string}/${string}`, {
         input: {
           prompt: fightPrompt
         }
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
           console.log('🔍 URL property type:', typeof firstOutput.url)
           if (typeof firstOutput.url === 'function') {
             try {
-              const urlResult = await (firstOutput as any).url()
+              const urlResult = await (firstOutput as { url: () => Promise<string | { href: string }> }).url()
               resultUrl = typeof urlResult === 'object' && urlResult.href ? urlResult.href : String(urlResult)
               console.log('📸 Got URL from function call:', resultUrl)
             } catch (error) {
@@ -126,21 +126,22 @@ export async function POST(request: NextRequest) {
         resultUrl = output
         console.log('📸 Using direct string output:', resultUrl)
       } else if (output && typeof output === 'object' && 'url' in output) {
-        console.log('🔍 URL property type:', typeof (output as any).url)
-        if (typeof (output as any).url === 'function') {
+        const outputWithUrl = output as { url: string | (() => Promise<string | { href: string }>) }
+        console.log('🔍 URL property type:', typeof outputWithUrl.url)
+        if (typeof outputWithUrl.url === 'function') {
           try {
-            const urlResult = await (output as any).url()
+            const urlResult = await outputWithUrl.url()
             resultUrl = typeof urlResult === 'object' && urlResult.href ? urlResult.href : String(urlResult)
             console.log('📸 Got URL from function call:', resultUrl)
           } catch (error) {
             console.error('❌ Error calling URL function:', error)
             console.log('🔄 Using default placeholder due to URL function error')
           }
-        } else if (typeof (output as any).url === 'string') {
-          resultUrl = (output as any).url
+        } else if (typeof outputWithUrl.url === 'string') {
+          resultUrl = outputWithUrl.url
           console.log('📸 Got URL from string property:', resultUrl)
         } else {
-          console.error('❌ URL property is neither function nor string:', typeof (output as any).url)
+          console.error('❌ URL property is neither function nor string:', typeof outputWithUrl.url)
           console.log('🔄 Using default placeholder due to unknown URL type')
         }
       } else {
