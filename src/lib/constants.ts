@@ -73,6 +73,17 @@ export const OPPONENTS = [
   }
 ] as const
 
+export type Opponent = {
+  id: string
+  name: string
+  slug: string
+  nickname: string
+  base_photo_url: string
+  allowed: boolean
+  description: string
+  isSpecial?: boolean
+}
+
 export const FIGHT_TEMPLATES = [
   {
     id: '1',

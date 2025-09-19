@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Zap, Download, RotateCcw, Loader2 } from 'lucide-react'
+import { Zap, Download, RotateCcw, Loader2, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
@@ -33,8 +33,34 @@ function OpponentSelector({ selectedOpponent, onSelect }: { selectedOpponent: st
           animate={{ opacity: 1, scale: 1 }}
           className="text-center mb-4"
         >
-          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center text-white font-bold text-2xl mx-auto mb-3">
-            {currentOpponent.name.split(' ').map(n => n[0]).join('')}
+          <div className={`w-24 h-24 rounded-full ${
+            currentOpponent.slug === 'donald-trump' 
+              ? 'bg-gradient-to-br from-yellow-500 to-orange-500 p-1' 
+              : 'bg-gradient-to-br from-red-500 to-orange-500 p-1'
+          } flex items-center justify-center text-white font-bold text-2xl mx-auto mb-3`}>
+{(() => {
+              const imageMap: Record<string, string> = {
+                'elon-musk': '/icons-stars/musk.png',
+                'taylor-swift': '/icons-stars/swift.png',
+                'mrbeast': '/icons-stars/mrbeast.png',
+                'drake': '/icons-stars/drake.png',
+                'jeff-bezos': '/icons-stars/bezos.png',
+                'the-rock': '/icons-stars/therock.png',
+                'mark-zuckerberg': '/icons-stars/zuckerberg.png',
+                'donald-trump': '/icons-stars/trump.png'
+              }
+              
+              const imageSrc = imageMap[currentOpponent.slug]
+              return imageSrc ? (
+                <img 
+                  src={imageSrc} 
+                  alt={currentOpponent.name} 
+                  className="w-20 h-20 rounded-full object-cover"
+                />
+              ) : (
+                currentOpponent.name.split(' ').map(n => n[0]).join('')
+              )
+            })()}
           </div>
           <div className="text-white font-bold text-lg">{currentOpponent.name}</div>
           <div className="text-red-400 text-sm">{currentOpponent.nickname}</div>
@@ -61,8 +87,34 @@ function OpponentSelector({ selectedOpponent, onSelect }: { selectedOpponent: st
               onClick={() => onSelect(opponent.slug)}
             >
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-red-500 to-orange-500 flex items-center justify-center text-white font-bold text-xs">
-                  {opponent.name.split(' ').map(n => n[0]).join('')}
+                <div className={`w-8 h-8 rounded-full ${
+                  opponent.slug === 'donald-trump' 
+                    ? 'bg-gradient-to-br from-yellow-500 to-orange-500 p-0.5' 
+                    : 'bg-gradient-to-br from-red-500 to-orange-500 p-0.5'
+                } flex items-center justify-center text-white font-bold text-xs`}>
+{(() => {
+                    const imageMap: Record<string, string> = {
+                      'elon-musk': '/icons-stars/musk.png',
+                      'taylor-swift': '/icons-stars/swift.png',
+                      'mrbeast': '/icons-stars/mrbeast.png',
+                      'drake': '/icons-stars/drake.png',
+                      'jeff-bezos': '/icons-stars/bezos.png',
+                      'the-rock': '/icons-stars/therock.png',
+                      'mark-zuckerberg': '/icons-stars/zuckerberg.png',
+                      'donald-trump': '/icons-stars/trump.png'
+                    }
+                    
+                    const imageSrc = imageMap[opponent.slug]
+                    return imageSrc ? (
+                      <img 
+                        src={imageSrc} 
+                        alt={opponent.name} 
+                        className="w-6 h-6 rounded-full object-cover"
+                      />
+                    ) : (
+                      opponent.name.split(' ').map(n => n[0]).join('')
+                    )
+                  })()}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="font-bold text-xs truncate">{opponent.name}</div>
