@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Zap, Download, RotateCcw, Loader2, Star } from 'lucide-react'
+import { track } from '@vercel/analytics'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
@@ -216,6 +217,13 @@ export function ArenaGenerator() {
     captions: []
   })
 
+  // Track page view when component mounts
+  useEffect(() => {
+    track('Page View', {
+      page: 'Beef Arena Generator'
+    })
+  }, [])
+
   const handleGenerate = async () => {
     if (!state.selectedFighter1 || !state.selectedFighter2 || !state.selectedStyle) {
       console.log('❌ Cannot generate: missing requirements', {
@@ -232,6 +240,19 @@ export function ArenaGenerator() {
     }
 
     console.log('🚀 Starting celebrity vs celebrity generation...')
+    
+    // Track generation event
+    const fighter1 = OPPONENTS.find(f => f.slug === state.selectedFighter1)
+    const fighter2 = OPPONENTS.find(f => f.slug === state.selectedFighter2)
+    const style = FIGHT_TEMPLATES.find(t => t.slug === state.selectedStyle)
+    
+    track('Generate Fight Poster', {
+      fighter1: fighter1?.name || 'Unknown',
+      fighter2: fighter2?.name || 'Unknown',
+      style: style?.name || 'Unknown',
+      watermark: state.watermarkEnabled
+    })
+    
     setState(prev => ({ ...prev, isGenerating: true, progress: 0 }))
 
     try {
@@ -291,8 +312,26 @@ export function ArenaGenerator() {
         resultUrl: result.resultUrl,
         captions: result.captions || []
       }))
+      
+      // Track successful generation
+      track('Fight Poster Generated Successfully', {
+        fighter1: result.fighter1,
+        fighter2: result.fighter2,
+        style: result.style,
+        hasImage: !!result.resultUrl,
+        captionsCount: result.captions?.length || 0
+      })
     } catch (error) {
       console.error('💥 Generation failed:', error)
+      
+      // Track failed generation
+      track('Fight Poster Generation Failed', {
+        fighter1: fighter1?.name || 'Unknown',
+        fighter2: fighter2?.name || 'Unknown',
+        style: style?.name || 'Unknown',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      })
+      
       setState(prev => ({
         ...prev,
         isGenerating: false,
@@ -333,7 +372,14 @@ export function ArenaGenerator() {
             <div className="text-white text-xl font-bold mb-4">FIGHTER 1</div>
             <OpponentSelector 
               selectedOpponent={state.selectedFighter1}
-              onSelect={(opponent: string) => setState(prev => ({ ...prev, selectedFighter1: opponent }))}
+              onSelect={(opponent: string) => {
+                const fighterData = OPPONENTS.find(f => f.slug === opponent)
+                track('Select Fighter 1', {
+                  fighter: fighterData?.name || 'Unknown',
+                  slug: opponent
+                })
+                setState(prev => ({ ...prev, selectedFighter1: opponent }))
+              }}
             />
           </div>
         </Card>
@@ -356,7 +402,14 @@ export function ArenaGenerator() {
             <div className="text-white text-xl font-bold mb-4">FIGHTER 2</div>
             <OpponentSelector 
               selectedOpponent={state.selectedFighter2}
-              onSelect={(opponent: string) => setState(prev => ({ ...prev, selectedFighter2: opponent }))}
+              onSelect={(opponent: string) => {
+                const fighterData = OPPONENTS.find(f => f.slug === opponent)
+                track('Select Fighter 2', {
+                  fighter: fighterData?.name || 'Unknown',
+                  slug: opponent
+                })
+                setState(prev => ({ ...prev, selectedFighter2: opponent }))
+              }}
             />
           </div>
         </Card>
@@ -365,7 +418,14 @@ export function ArenaGenerator() {
       {/* Fight Style Selection */}
       <StyleSelector 
         selectedStyle={state.selectedStyle}
-        onSelect={(style: string) => setState(prev => ({ ...prev, selectedStyle: style }))}
+        onSelect={(style: string) => {
+          const styleData = FIGHT_TEMPLATES.find(t => t.slug === style)
+          track('Select Fight Style', {
+            style: styleData?.name || 'Unknown',
+            slug: style
+          })
+          setState(prev => ({ ...prev, selectedStyle: style }))
+        }}
       />
 
       {/* Settings */}
@@ -374,7 +434,12 @@ export function ArenaGenerator() {
           <div className="flex items-center space-x-3">
             <Switch 
               checked={state.watermarkEnabled}
-              onCheckedChange={(checked) => setState(prev => ({ ...prev, watermarkEnabled: checked }))}
+              onCheckedChange={(checked) => {
+                track('Toggle Watermark', {
+                  enabled: checked
+                })
+                setState(prev => ({ ...prev, watermarkEnabled: checked }))
+              }}
             />
             <label className="text-gray-300 text-sm">Include &quot;BEEF ARENA&quot; watermark</label>
           </div>
@@ -459,6 +524,13 @@ export function ArenaGenerator() {
           resultUrl={state.resultUrl}
           captions={state.captions}
           onDownload={() => {
+            // Track download event
+            track('Download Fight Poster', {
+              fighter1: state.selectedFighter1,
+              fighter2: state.selectedFighter2,
+              style: state.selectedStyle
+            })
+            
             const link = document.createElement('a')
             link.href = state.resultUrl!
             link.download = 'beef-arena-fight.png'
