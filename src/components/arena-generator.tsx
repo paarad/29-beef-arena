@@ -410,6 +410,27 @@ export function ArenaGenerator() {
           </Button>
         </motion.div>
         
+        {/* Model Limitation Banner */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="mt-4 max-w-2xl mx-auto"
+        >
+          <div className="bg-yellow-900/30 border border-yellow-500/50 rounded-lg p-3">
+            <div className="flex items-start gap-2">
+              <div className="flex-shrink-0 mt-0.5">
+                <div className="w-4 h-4 rounded-full bg-yellow-500 flex items-center justify-center">
+                  <span className="text-yellow-900 text-xs font-bold">!</span>
+                </div>
+              </div>
+              <div className="text-yellow-200 text-sm">
+                <span className="font-semibold">Note:</span> Due to restrictive models, nothing goes too far - results are mostly peaceful-looking. We're working to improve this to create proper fight scenes.
+              </div>
+            </div>
+          </div>
+        </motion.div>
+        
         {state.isGenerating && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
