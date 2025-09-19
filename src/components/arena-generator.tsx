@@ -56,34 +56,61 @@ export function ArenaGenerator() {
     setState(prev => ({ ...prev, isGenerating: true, progress: 0 }))
 
     try {
+      // Convert file to data URL for API
+      const fileDataUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader()
+        reader.onload = (e) => resolve(e.target?.result as string)
+        reader.readAsDataURL(state.selfieFile!)
+      })
+
       // Simulate progress
       const progressInterval = setInterval(() => {
         setState(prev => ({
           ...prev,
-          progress: Math.min(prev.progress + Math.random() * 20, 90)
+          progress: Math.min(prev.progress + Math.random() * 15, 85)
         }))
-      }, 500)
+      }, 800)
 
-      // TODO: Implement actual API call
-      await new Promise(resolve => setTimeout(resolve, 3000))
+      // Call the generation API
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          selfieUrl: fileDataUrl,
+          opponentSlug: state.selectedOpponent,
+          styleSlug: state.selectedStyle,
+          watermarkEnabled: state.watermarkEnabled,
+        }),
+      })
 
       clearInterval(progressInterval)
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Generation failed')
+      }
+
+      const result = await response.json()
       
       setState(prev => ({
         ...prev,
         isGenerating: false,
         progress: 100,
-        resultUrl: '/placeholder-fight-result.jpg',
-        captions: [
-          'When algorithms meet attitude 🔥',
-          'He came for the clout, not the crown',
-          'This beef is well done 🥩',
-          'One tweet changed everything'
-        ]
+        resultUrl: result.resultUrl,
+        captions: result.captions || []
       }))
     } catch (error) {
       console.error('Generation failed:', error)
-      setState(prev => ({ ...prev, isGenerating: false, progress: 0 }))
+      setState(prev => ({ 
+        ...prev, 
+        isGenerating: false, 
+        progress: 0,
+        // Show error state
+        resultUrl: null,
+        captions: ['Error: ' + (error instanceof Error ? error.message : 'Generation failed')]
+      }))
     }
   }
 
