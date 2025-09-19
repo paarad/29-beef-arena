@@ -6,7 +6,7 @@ import { OPPONENTS, FIGHT_TEMPLATES } from '@/lib/constants'
 
 const replicate = new Replicate({ auth: process.env.REPLICATE_API_TOKEN! })
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! })
-const REPLICATE_MODEL = process.env.REPLICATE_MODEL || "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b"
+const REPLICATE_MODEL = process.env.REPLICATE_MODEL || "google/nano-banana"
 
 export async function POST(request: NextRequest) {
   console.log('🥩 BEEF ARENA - Celebrity vs Celebrity Generation API called')
@@ -84,13 +84,7 @@ export async function POST(request: NextRequest) {
       
       const output = await replicate.run(REPLICATE_MODEL as any, {
         input: {
-          prompt: fightPrompt,
-          negative_prompt: "violence, blood, gore, weapons, arctic, snow, ice, cold, winter, landscape",
-          width: 1024,
-          height: 1024,
-          num_inference_steps: 20,
-          guidance_scale: 7.5,
-          seed: Math.floor(Math.random() * 1000000)
+          prompt: fightPrompt
         }
       })
 
@@ -132,8 +126,23 @@ export async function POST(request: NextRequest) {
         resultUrl = output
         console.log('📸 Using direct string output:', resultUrl)
       } else if (output && typeof output === 'object' && 'url' in output) {
-        resultUrl = (output as any).url
-        console.log('📸 Using URL property from object:', resultUrl)
+        console.log('🔍 URL property type:', typeof (output as any).url)
+        if (typeof (output as any).url === 'function') {
+          try {
+            const urlResult = await (output as any).url()
+            resultUrl = typeof urlResult === 'object' && urlResult.href ? urlResult.href : String(urlResult)
+            console.log('📸 Got URL from function call:', resultUrl)
+          } catch (error) {
+            console.error('❌ Error calling URL function:', error)
+            console.log('🔄 Using default placeholder due to URL function error')
+          }
+        } else if (typeof (output as any).url === 'string') {
+          resultUrl = (output as any).url
+          console.log('📸 Got URL from string property:', resultUrl)
+        } else {
+          console.error('❌ URL property is neither function nor string:', typeof (output as any).url)
+          console.log('🔄 Using default placeholder due to unknown URL type')
+        }
       } else {
         console.error('❌ Unexpected Replicate output format:', typeof output, output)
         console.log('🔄 Using default placeholder due to unknown format')
