@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Zap, Download, RotateCcw, Loader2, Star } from 'lucide-react'
+import { Zap, Download, RotateCcw, Loader2 } from 'lucide-react'
 import { track } from '@vercel/analytics'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -490,7 +490,7 @@ export function ArenaGenerator() {
                 </div>
               </div>
               <div className="text-yellow-200 text-sm">
-                <span className="font-semibold">Note:</span> Due to restrictive models, nothing goes too far - results are mostly peaceful-looking. We're working to improve this to create proper fight scenes.
+                <span className="font-semibold">Note:</span> Due to restrictive models, nothing goes too far - results are mostly peaceful-looking. We&apos;re working to improve this to create proper fight scenes.
               </div>
             </div>
           </div>
